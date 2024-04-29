@@ -1,0 +1,38 @@
+package ix.util.net2.mongodb
+
+import com.mongodb.casbah.{MongoDB, MongoCollection}
+import org.apache.commons.configuration.HierarchicalConfiguration
+import scala.collection.mutable
+import ix.util.net2.{Server, Deamon}
+import com.mongodb.casbah.Imports._
+
+object MongoCasbahDeamon {
+  val name = "mongodb-casbah"
+}
+
+class MongoCasbahDeamon extends Deamon {
+  var port = 27017
+  var host = "localhost"
+  var conn: MongoConnection = null
+  val databases = new mutable.HashMap[String, MongoDB] with mutable.SynchronizedMap[String, MongoDB]
+  val collections = new mutable.HashMap[String, MongoCollection] with mutable.SynchronizedMap[String, MongoCollection]
+
+  def configure(server: Server, conf: HierarchicalConfiguration) {
+    port = conf.getInt("port", port)
+    host = conf.getString("host", host)
+    conn = MongoConnection(host, port)
+  }
+
+  def database(name: String): MongoDB = {
+    databases.getOrElseUpdate(name, conn(name))
+  }
+
+  def collection(databaseName: String, collectionName: String): MongoCollection = {
+    collections.getOrElseUpdate(
+      databaseName+"."+collectionName,
+      database(databaseName).apply(collectionName)
+    )
+  }
+
+  def name: String = MongoCasbahDeamon.name
+}

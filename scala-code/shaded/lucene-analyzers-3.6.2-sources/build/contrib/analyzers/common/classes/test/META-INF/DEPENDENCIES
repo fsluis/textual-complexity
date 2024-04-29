@@ -1,0 +1,15 @@
+// ------------------------------------------------------------------
+// Transitive dependencies of this project determined from the
+// maven pom organized by organization.
+// ------------------------------------------------------------------
+
+Lucene Common Analyzers
+
+
+From: 'The Apache Software Foundation' (http://www.apache.org/)
+  - Lucene Core (http://lucene.apache.org/java/lucene-parent/lucene-core) org.apache.lucene3:lucene-core:jar:3.6.2
+    License: Apache 2  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+
+

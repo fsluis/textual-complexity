@@ -1,0 +1,58 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+<head>
+<!--
+
+  @(#)package.html	1.60 98/01/27
+
+  Copyright 1998 Sun Microsystems, Inc. 901 San Antonio Road,
+  Palo Alto, California, 94303, U.S.A.  All Rights Reserved.
+
+  This software is the confidential and proprietary information of Sun
+  Microsystems, Inc. ("Confidential Information").  You shall not
+  disclose such Confidential Information and shall use it only in
+  accordance with the terms of the license agreement you entered into
+  with Sun.
+
+  CopyrightVersion 1.2
+
+-->
+</head>
+<body bgcolor="white">
+<p>
+Provides classes for the access to the different servers used by your project. Gives classes for the servers on which
+your project is running, as well as the different deamons it uses on the servers.
+</p><p>
+The purpose is to centrally supply the information needed for the use of the different resources,
+and to restrict access to the login-information of the different deamons to this centralized package.
+</p>
+<h2>Package structure</h2>
+<p>
+This package consists of a service {@link system.core.net.ServerService} which uses a {@link system.core.net.NetData}
+implementation for the retrieval of it's data, and consists of {@link system.core.net.Server}s and
+{@link system.core.net.Driver}s. Each servers consists of several {@link system.core.net.Deamon}s, which handle
+the connection to that server using different protocols.
+</p>
+<h2>Retrieving a deamon</h2>
+<p>
+A deamon is used to connect to a deamon running on a server, such as MySQL. To use this connection, one must do the
+following steps:
+<ul>
+    <li>Get the {@link system.core.net.ServerService}
+    <li>Retrieve the wanted {@link system.core.net.Server} to connect to
+    <li>Get the {@link system.core.net.Deamon} to connect with
+</ul>
+</p>
+<h2>Loading the available deamons</h2>
+<p>
+This package is read-only, and mutations should be directly in the data files. It uses {@link system.core.net.NetData}
+implementations to load the data. The path of this should be supplied to the {@link system.core.net.ServerService}
+when calling the {@link system.core.net.ServerService#startService(system.util.Configuration)}. Currently the following data
+implementation is available for storing which servers/deamons:
+<ul>
+	<li>{@link system.core.net.XMLNetData}
+</ul>
+</p>
+
+</body>
+</html>

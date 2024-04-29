@@ -1,0 +1,40 @@
+package ix.util.net2.mongodb
+
+import com.mongodb.MongoClient
+import com.mongodb.client.{MongoCollection, MongoDatabase}
+import ix.util.net2.{Deamon, Server}
+import org.apache.commons.configuration.HierarchicalConfiguration
+import org.bson.Document
+
+import scala.collection.mutable
+
+object MongoJavaDeamon3 {
+  val name = "mongodb-java-3"
+}
+
+class MongoJavaDeamon3 extends Deamon {
+  var port = 27017
+  var host = "localhost"
+  var client: MongoClient = null
+  val databases = new mutable.HashMap[String, MongoDatabase] with mutable.SynchronizedMap[String, MongoDatabase]
+  val collections = new mutable.HashMap[String, MongoCollection[Document]] with mutable.SynchronizedMap[String, MongoCollection[Document]]
+
+  def configure(server: Server, conf: HierarchicalConfiguration) {
+    port = conf.getInt("port", port)
+    host = conf.getString("host", host)
+    client = new MongoClient(host, port)
+  }
+
+  def database(name: String): MongoDatabase = {
+    databases.getOrElseUpdate(name, client.getDatabase(name))
+  }
+
+  def collection(databaseName: String, collectionName: String): MongoCollection[Document] = {
+    collections.getOrElseUpdate(
+      databaseName+"."+collectionName,
+      database(databaseName).getCollection(collectionName)
+    )
+  }
+
+  def name: String = MongoJavaDeamon2.name
+}

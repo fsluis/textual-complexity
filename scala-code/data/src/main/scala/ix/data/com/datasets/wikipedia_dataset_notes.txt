@@ -1,0 +1,173 @@
+#Wiki procedure#
+
+##IMPORT##
+1. Download from https://ftp.acc.umu.se/mirror/wikimedia.org/dumps/simplewiki/20200401/:
+md5sums-simplewiki-20200401-categorylinks.sql.gz.txt
+md5sums-simplewiki-20200401-pagelinks.sql.gz.txt
+md5sums-simplewiki-20200401-pages-articles.xml.bz2.txt
+md5sums-simplewiki-20200401-stub-meta-history.xml.gz.txt
+md5sums-simplewiki-20200401-langlinks.sql.gz.txt
+
+langlinks are only needed for simplewiki
+
+2. Run DataMachine, import files to db (one per wiki)
+See https://dkpro.github.io/dkpro-jwpl/DataMachine/
+
+3. Import langlinks table to simple wiki db
+zcat simplewiki-20200401-langlinks.sql.gz | mysql -u 'uSeR' -pPaSSWoRD wiki_simple_20200401
+
+4. Run WikiRevisionsTable (allocate enough memory for english wiki!)
+nohup spark-submit --driver-memory 6G --executor-memory 40G --jars $ADD_JARS --class ix.data.com.datasets.WikiRevisionsTable --properties-file $HOME/farm/etc/kommlab/spark.conf --files $FILES data/target/scala-2.11/data-assembly-0.1-SNAPSHOT.jar &
+
+5. Run WikiMetaTable
+nohup java -cp "$HOME/farm/lib/*:$HOME/farm/bin/spark-2.4.3-bin-hadoop2.7/jars/*" ix.data.com.datasets.WikiMetaTable simple2020 > simple.out 2>&1 &
+nohup java -cp "$HOME/farm/lib/*:$HOME/farm/bin/spark-2.4.3-bin-hadoop2.7/jars/*" ix.data.com.datasets.WikiMetaTable english2020 > english.out 2>&1 &
+
+##DATABASE##
+1. Add indexes tables of both wikis
+ALTER TABLE `Page` ADD INDEX( `name`);
+ALTER TABLE `page_revisions` ADD UNIQUE(`page_id`);
+ALTER TABLE `page_revisions` ADD INDEX(`start`);
+
+2. Create ensiwiki db, grant access
+
+3. Create pairs and info tables at ensiwiki db
+EXPORT SERVICES_XML = $HOME/farm/etc/services.xml
+java -cp "$HOME/farm/lib/*:$HOME/farm/bin/spark-2.4.3-bin-hadoop2.7/jars/*" ix.data.com.datasets.WikiPairsTable
+
+4. Create revision view
+CREATE VIEW pages_revisions AS
+(SELECT info.id, info.lang, rev.* FROM pages_info AS info
+INNER JOIN wiki_simple_20200401.page_revisions AS rev ON rev.page_id = info.page_id AND info.lang='simple'
+) UNION ALL (
+SELECT info.id, info.lang, rev.* FROM pages_info AS info
+INNER JOIN wiki_english_20200401.page_revisions AS rev ON rev.page_id = info.page_id AND info.lang='english'
+)
+ORDER BY id
+
+5. Create ranking view (requires row_number from mysql8)
+CREATE VIEW pairs_info AS
+SELECT pairs.*, (simple.agerank + english.agerank)/2 AS agerank, simple.agerank AS simple_agerank, english.agerank AS english_agerank, simple.start AS simple_start, english.start AS english_start,  simple.revisions AS simple_revisions, english.revisions AS english_revisions, simple.contributors AS simple_contributors, english.contributors AS english_contributors, simple.is_disambiguation AS simple_disambiguation, english.is_disambiguation AS english_disambiguation, simple.is_discussion AS simple_discussion, english.is_discussion AS english_discussion, simple.redirect_count AS simple_redirect_count, english.redirect_count AS english_redirect_count, simple.stub_count AS simple_stub_count, english.stub_count AS english_stub_count, english.lucene_word_count AS english_word_count, simple.lucene_word_count AS simple_word_count, english.stanford_sentence_count AS english_sentence_count, simple.stanford_sentence_count AS simple_sentence_count
+FROM pairs
+INNER JOIN (
+    SELECT RANK() OVER ( ORDER BY rev.start ) agerank,
+    pairs.*, rev.start, rev.revisions, rev.contributors, info.is_disambiguation, info.is_discussion, info.redirect_count, info.stub_count, info.lucene_word_count, info.stanford_sentence_count
+    FROM pairs
+    INNER JOIN pages_info AS info ON info.page_id=pairs.simple_id AND info.lang='simple'
+    INNER JOIN pages_revisions AS rev ON rev.page_id=pairs.simple_id AND rev.lang='simple'
+    WHERE rev.start IS NOT NULL
+) AS simple ON simple.simple_id=pairs.simple_id AND simple.english_id=pairs.english_id
+INNER JOIN (
+    SELECT RANK() OVER ( ORDER BY rev.start ) agerank,
+    pairs.*, rev.start, rev.revisions, rev.contributors, info.is_disambiguation, info.is_discussion, info.redirect_count, info.stub_count, info.lucene_word_count, info.stanford_sentence_count
+    FROM pairs
+    INNER JOIN pages_info AS info ON info.page_id=pairs.english_id AND info.lang='english'
+    INNER JOIN pages_revisions AS rev ON rev.page_id=pairs.english_id AND rev.lang='english'
+    WHERE rev.start IS NOT NULL
+) AS english ON english.english_id=pairs.english_id AND english.simple_id=pairs.simple_id
+ORDER BY agerank
+
+
+CREATE VIEW pairs_agerank AS
+SELECT pairs.*, (simple.agerank + english.agerank)/2 AS agerank, simple.agerank AS agerank_simple, english.agerank AS agerank_english, simple.start AS simple_start, english.start AS english_start
+FROM pairs
+INNER JOIN (
+    SELECT RANK() OVER ( ORDER BY rev.start ) agerank,
+    rev.start, pairs.id
+    FROM pairs
+    INNER JOIN pages_revisions AS rev ON rev.page_id=pairs.simple_id AND rev.lang='simple'
+    WHERE rev.start IS NOT NULL
+) AS simple ON simple.id=pairs.id
+INNER JOIN (
+    SELECT RANK() OVER ( ORDER BY rev.start ) agerank,
+    rev.start, pairs.id
+    FROM pairs
+    INNER JOIN pages_revisions AS rev ON rev.page_id=pairs.english_id AND rev.lang='english'
+    WHERE rev.start IS NOT NULL
+) AS english ON english.id=pairs.id
+ORDER BY agerank
+
+# Test query of 3 pairs with shared english_id / english_rank
+SELECT * FROM `pairs_agerank` WHERE `simple_id` = 8 OR english_id=290
+
+6. Create pages view (with ranking and selecting information)
+# Needed to add split this into two views to prevent multiple entries of a page when it appeared
+# multiple times in the pairs table. Choosing the pair with the lowest rank.
+# Also see here https://www.sisense.com/blog/4-ways-to-join-only-the-first-row-in-sql/
+
+# Intermediate table
+CREATE VIEW pages_pairs AS
+(
+SELECT info.id, info.lang, info.page_id, info.title, p.text, pairs.id AS pairs_id, pairs.agerank, pairs.simple_agerank, pairs.english_agerank, info.is_disambiguation, info.is_discussion, info.redirect_count, info.stub_count, (pairs.simple_revisions+pairs.english_revisions) AS pairs_revisions, (pairs.simple_disambiguation+pairs.english_disambiguation) AS pairs_disambiguation, (pairs.simple_discussion+pairs.english_discussion) AS pairs_discussion, (pairs.simple_redirect_count+pairs.english_redirect_count) AS pairs_redirect_count, (pairs.simple_stub_count+pairs.english_stub_count) AS pairs_stub_count, LEAST(simple_word_count, english_word_count) AS min_word_count, LEAST(simple_sentence_count, english_sentence_count) AS min_sentence_count
+FROM pages_info AS info
+INNER JOIN wiki_simple_20200401.Page AS p ON p.pageId = info.page_id AND info.lang='simple'
+LEFT JOIN pairs_info AS pairs ON pairs.simple_id=info.page_id AND info.lang='simple'
+) UNION ALL (
+SELECT info.id, info.lang, info.page_id, info.title, p.text, pairs.id AS pairs_id, pairs.agerank, pairs.simple_agerank, pairs.english_agerank, info.is_disambiguation, info.is_discussion, info.redirect_count, info.stub_count, (pairs.simple_revisions+pairs.english_revisions) AS pairs_revisions, (pairs.simple_disambiguation+pairs.english_disambiguation) AS pairs_disambiguation, (pairs.simple_discussion+pairs.english_discussion) AS pairs_discussion, (pairs.simple_redirect_count+pairs.english_redirect_count) AS pairs_redirect_count, (pairs.simple_stub_count+pairs.english_stub_count) AS pairs_stub_count, LEAST(simple_word_count, english_word_count) AS min_word_count, LEAST(simple_sentence_count, english_sentence_count) AS min_sentence_count
+FROM pages_info AS info
+INNER JOIN wiki_english_20200401.Page AS p ON p.pageId = info.page_id AND info.lang='english'
+LEFT JOIN pairs_info AS pairs ON pairs.english_id=info.page_id AND info.lang='english'
+)
+
+# Table to select first of multiple occurences
+# Note: Added minimal sentence/word count to this (after analysis in R)
+# And pairs_disambiguation=0 as well
+# can/should be removed when releasing the data
+# advantage of doing this now is that other possible pairs are counted instead when the first one would
+# otherwise be removed at later filtering.
+CREATE VIEW pages AS
+SELECT * FROM
+(SELECT pages_pairs.*, row_number() OVER (PARTITION BY id ORDER BY agerank ASC) AS row_num FROM pages_pairs WHERE min_word_count>=30 AND min_sentence_count>=5 AND pairs_disambiguation=0) AS ordered_pages
+WHERE ordered_pages.row_num = 1
+ORDER BY id
+
+# Example query to show the need for it
+SELECT * FROM (SELECT pages_pairs.*, row_number() OVER (PARTITION BY id ORDER BY agerank ASC) AS row_num FROM pages_pairs) AS ordered_pages WHERE page_id=290 OR page_id=8
+SELECT * FROM pages WHERE page_id=290 OR page_id=8
+
+## Some stats ##
+INFO [main] (com.datasets.WikiPairsTable$:89) - Finishing with 158052 searches and 154234 pairs found
+
+SELECT COUNT(*) FROM pages_info;
++----------+
+| COUNT(*) |
++----------+
+|   311656 |
++----------+
+SELECT COUNT(*) FROM pages;
++----------+
+| COUNT(*) |
++----------+
+|   311656 |
++----------+
+SELECT COUNT(*) FROM pages WHERE pairs_stub_count=0 AND pairs_disambiguation=0 AND pairs_discussion=0
++----------+
+| COUNT(*) |
++----------+
+|    87951 |
++----------+
+SELECT COUNT(*) FROM pages WHERE pairs_disambiguation=0 AND pairs_discussion=0
++----------+
+| COUNT(*) |
++----------+
+|   302106 |
++----------+
+SELECT COUNT(*) FROM pages WHERE pairs_disambiguation=0;
++----------+
+| COUNT(*) |
++----------+
+|   302106 |
++----------+
+
+# with filter (word_count, sentence_count, and is_disambiguation) at pages view:
+SELECT COUNT(*) FROM pages;
++----------+
+| COUNT(*) |
++----------+
+|   156378 |
++----------+
+
+
+##EXPORT##
+java -cp "$HOME/farm/lib/*:$HOME/farm/bin/spark-2.4.3-bin-hadoop2.7/jars/*" ix.data.com.datasets.EnSiWikiDataSet agerank 1000
+java -cp "$HOME/farm/lib/*:$HOME/farm/bin/spark-2.4.3-bin-hadoop2.7/jars/*" ix.data.com.datasets.EnSiWikiDataSet agerank 50000

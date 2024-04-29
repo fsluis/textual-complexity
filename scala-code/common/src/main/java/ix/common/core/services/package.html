@@ -1,0 +1,63 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+<head>
+<!--
+
+  @(#)package.html	1.60 98/01/27
+
+  Copyright 1998 Sun Microsystems, Inc. 901 San Antonio Road,
+  Palo Alto, California, 94303, U.S.A.  All Rights Reserved.
+
+  This software is the confidential and proprietary information of Sun
+  Microsystems, Inc. ("Confidential Information").  You shall not
+  disclose such Confidential Information and shall use it only in
+  accordance with the terms of the license agreement you entered into
+  with Sun.
+
+  CopyrightVersion 1.2
+
+-->
+</head>
+<body bgcolor="white">
+<p>
+This package gives the ability to organise your system through a services-design. This means that each subsystem is a
+service, which can be requested using a static branch of services, available through the whole system.
+</p>
+<h2>Package structure</h2>
+<p>
+The data in this package consists of a {@link system.core.services.ServiceBranch}, which contains other
+{@link system.core.services.ServiceBranch}es and {@link system.core.services.ServiceLeaf}s. Each
+{@link system.core.services.ServiceLeaf} wraps a {@link system.core.services.Service} instance, and handles the
+life cycle of it (starting and stopping). To load and save the services/branches, there is a
+{@link system.core.services.ServicesData} class which can be implemented to handle the loading and saving. Finally,
+there is a class to provide the one root branch for the whole system, the {@link system.core.services.Services} class.
+</p>
+<h2>Initialising the package</h2>
+<p>
+To initialise the package, one needs the {@link system.core.services.Services} class. From this class, one can retrieve
+the root {@link system.core.services.ServiceBranch} using the {@link system.core.services.Services#getRoot()} method.
+This branch needs to be given a data handling implementation to load the branch with. For more information about the
+available implementations, see below. This data handling implementation should be set using the
+{@link system.core.services.ServiceBranch#setData(system.core.services.ServicesData)} method. The data handling
+implementation will then be requested to load the root branch.
+</p>
+<h2>Retrieving a service</h2>
+<p>
+Once the package has been initialised, this is a simple process:
+<ul>
+    <li>Get the {@link system.core.services.Services}
+    <li>Retrieve the root {@link system.core.services.ServiceBranch}, and any subbranches
+    <li>Get the service, using the Class of the service, like branch.getService(ServerService.class).
+</ul>
+</p>
+<h2>Data layer</h2>
+<p>
+The following implementations are available:
+<ul>
+	<li>{@link system.core.services.XMLServicesData}
+	<li>{@link system.core.services.MySQLServicesData}
+</ul>
+</p>
+
+</body>
+</html>
