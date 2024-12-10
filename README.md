@@ -1,6 +1,5 @@
 # Textual complexity
-This repository contains the code base accompanying the paper '__Interpretability benefits Generalisability but not
-Accuracy for Models of Textual Complexity__'. 
+This repository contains the code base accompanying the paper '__Interpretability benefits Generalisability: The Case of Modeling Textual Complexity__'. 
 It consists of two main parts: Python code for FNN (Feedforward Neural Network) models and r code for GLM (General Linear Model) models.
 
 ## R code
