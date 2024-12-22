@@ -1,0 +1,8 @@
+pymysql==1.0.3
+sqlalchemy==2.0.15
+matplotlib==3.7.1
+scikit-learn==1.2.2
+numpy==1.23.5
+pyarrow==12.0.0
+pandas==1.5.3
+tqdm==4.65.0
