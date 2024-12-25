@@ -660,7 +660,7 @@ def outer_loop(param_grid):
                 # calculate test losses
                 #print(pred.shape)
 
-                m = metrics(test_yt.detach().cpu(), pred)
+                m = metrics(test_yt.detach().cpu().numpy(), pred)
                 log.info("train-test result: %s" % m)
 
             # Re-fit to whole data set (unless there was an early stop)
