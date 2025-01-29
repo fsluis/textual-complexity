@@ -2,7 +2,9 @@
 [![DOI](https://zenodo.org/badge/758700892.svg)](https://doi.org/10.5281/zenodo.14359834)
 
 # Textual complexity
-This repository contains the code base accompanying the paper '__Interpretability benefits Generalisability: The Case of Modeling Textual Complexity__'. 
+This repository contains the code base accompanying the paper '__Model interpretability enhances domain
+generalization in the case of textual complexity
+modeling__'. 
 It consists of two main parts: Python code for FNN (Feedforward Neural Network) models and r code for GLM (General Linear Model) models.
 
 ## R code
