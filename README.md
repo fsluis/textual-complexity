@@ -15,7 +15,7 @@ The Python code contains three main loops:
 ## Scala code
 The Scala code contains all the code used to extract the engineered feature set from the corpora. It has a dedicated readme.md file outlining details.
 
-## Models, results
+## Models and results
 Data files are released through Figshare (doi: [10.6084/m9.figshare.25676394](https://doi.org/10.6084/m9.figshare.25676394)).
 
 [![DOI](https://zenodo.org/badge/758700892.svg)](https://doi.org/10.5281/zenodo.14359834)
