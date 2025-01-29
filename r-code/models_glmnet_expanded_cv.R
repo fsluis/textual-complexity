@@ -80,7 +80,7 @@ if (!dbExistsTable(con, table_name)) {
   for (col in extra_columns) {
     dbExecute(con, paste0("ALTER TABLE `", table_name, "` ADD COLUMN `", col, "` INT"))
   }
-  extra_columns <- c("classif.acc", "classif.precision", "classif.recall", "classif.fbeta", "classif.ce", "classif.fn", "classif.fp", "classif.tn", "classif.tp", "guardian.rho_noco2", "guardian.rlogit_noco2", "guardian.rprob_noco2", "guardian.rho_comp", "guardian.rlogit_comp", "guardian.rprob_comp", "guardian.rho_pf", "guardian.rlogit_pf", "guardian.rprob_pf", "guardian.rinte", "guardian.r2inte")
+  extra_columns <- c("classif.acc", "classif.precision", "classif.recall", "classif.fbeta", "classif.ce", "classif.fn", "classif.fp", "classif.tn", "classif.tp", "guardian.rho_pf", "guardian.rlogit_pf", "guardian.rprob_pf")
   for (col in extra_columns) {
     dbExecute(con, paste0("ALTER TABLE `", table_name, "` ADD COLUMN `", col, "` DOUBLE"))
   }
@@ -330,29 +330,18 @@ outer_results = foreach(i=1:length(row_indexes), .packages = c("glmnet", "glmnet
   cat(paste0("Target evaluation on ~",depth,"_",alpha,"\n"))
   merged = merge(guardian_stimulus, gpred, by="stimulus")
   # 3 methods: r_prob, r_logit, and rho
-  # 3 variables: noco2, comp, pf (=combined)
   cor_res = list()
-  for(var in c('noco2', 'comp', 'pf')) {
     rho = cor(merged[,var], merged$logit, method="spearman")
     r_logit =  cor(merged[,var], merged$logit)
     r_prob = cor(merged[,var], merged$prob)
-    cor_res[[paste0('guardian.rho_',var)]] = rho
-    cor_res[[paste0('guardian.rlogit_',var)]] = r_logit
-    cor_res[[paste0('guardian.rprob_',var)]] = r_prob
-  }
-  p = merged$prob
-  merged$curve = p*(1-p)
-  r_inte = cor(merged$inte, merged$curve)
-  cat('r (inte^2 merged):', r_inte, '\n')
-  r2_inte = summary(lm(inte ~ prob + curve, merged))$r.squared
-  cat('r^2 (inte^2 merged):', r2_inte, '\n')
+    cor_res[[paste0('guardian.rho_pf')]] = rho
+    cor_res[[paste0('guardian.rlogit_pf')]] = r_logit
+    cor_res[[paste0('guardian.rprob_pf')]] = r_prob
 
   res = as.list(c(outer_grid[row,], classif.metrics, cor_res))
   res$features.dropped = dropped_features
   res$features.all = all_features
   res$features.used = used_features
-  res$guardian.rinte = r_inte
-  res$guardian.r2inte = r2_inte
   res$ID = pk_value
   df = data.frame( res )
   df$data_file = as.character(df$data_file)
@@ -377,19 +366,6 @@ outer_results = foreach(i=1:length(row_indexes), .packages = c("glmnet", "glmnet
       return (NULL)
       })
     
-  # Graph of p x noco2/inte
-  tryCatch({ # fails sometimes
-    source('plot_loess.R')
-    png(paste0("glmnet_cv/glmnet_cv_",pk_value,"-loess_prob_s75.png"))
-    plot_loess('inte', 'prob', merged, span=.75) #default
-    dev.off()
-    #png(paste0(filename,"_loess_prob_s100.png"))
-    #plot_loess('inte.x', 'prob', merged, span=1.0)
-    #dev.off()
-  }, error = function(e) {print(e)})
-  #save(result, file=paste0(dir,"/",combination,"_n-",n,"_alpha-",alpha,"_hco-",hco_threshold,".RData"), version=2)
-  #
-
     # Save model
     if(max_features == max(outer_grid[outer_grid$data==data_file & outer_grid$depth==depth, 'max_features'])) {
       # save models that use all features
