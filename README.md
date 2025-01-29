@@ -1,3 +1,6 @@
+
+[![DOI](https://zenodo.org/badge/758700892.svg)](https://doi.org/10.5281/zenodo.14359834)
+
 # Textual complexity
 This repository contains the code base accompanying the paper '__Interpretability benefits Generalisability: The Case of Modeling Textual Complexity__'. 
 It consists of two main parts: Python code for FNN (Feedforward Neural Network) models and r code for GLM (General Linear Model) models.
@@ -18,4 +21,5 @@ The Scala code contains all the code used to extract the engineered feature set 
 ## Models and results
 Data files are released through Figshare (doi: [10.6084/m9.figshare.25676394](https://doi.org/10.6084/m9.figshare.25676394)).
 
-[![DOI](https://zenodo.org/badge/758700892.svg)](https://doi.org/10.5281/zenodo.14359834)
+## Reference
+Van der Sluis, F., & van den Broek, E. L. (2025). Model interpretability enhances domain generalization in the case of textual complexity modeling. *Patterns, 6*, 101177. https://doi.org/10.1016/j.patter.2025.101177
